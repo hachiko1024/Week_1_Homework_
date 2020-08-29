@@ -1,0 +1,95 @@
+---
+title: "Chess_Transfers"
+author: "josef_waples"
+date: "8/27/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r chess}
+# Week 1 Assignment – Loading Data into a Data Frame
+# Choose one dataset on this url: https://data.fivethirtyeight.com/
+# "American Chess Is Great Again" - Chess transfer data  
+
+chess_transfer_data <- read.csv('~/Downloads/transfers_csv.csv')
+
+# First thing first - look at the structure of the dataframe. Also, look at the first 3 and last 3 rows using head and tail functions
+str(chess_transfer_data)
+head(chess_transfer_data, n = 3)
+tail(chess_transfer_data, n = 3)
+
+# After looking at the structure, I think the variable 'transfer.date' should be a date, not a factor
+
+chess_transfer_data$transfer.date <- as.Date(chess_transfer_data$transfer.date, "%m/%d/%y")
+str(chess_transfer_data)
+
+# Now I want to look at transfer date as a year only. Substring works because the format is the same for all observations 
+
+chess_transfer_data$transfer.date <- substring(chess_transfer_data$transfer.date,1,4)
+
+str(chess_transfer_data)
+
+# loading dplyr so I can use the pipe operator - %>%
+
+library(dplyr)
+
+# how many transfers happen for each federation each year?
+
+chess_transfers_clean <- chess_transfer_data %>%
+  group_by(federation, transfer.date) %>%
+  count()
+
+# which country has the most transfers total?
+
+count_of_total_transfers_by_country_table <- chess_transfers_clean %>%
+  group_by(federation) %>%
+  summarize(sum = sum(n))
+
+# there are probably too many countries to graph - I'm choosing top three
+
+top_three_countries_total <- count_of_total_transfers_by_country_table %>%
+  top_n(3)
+  
+# let's merge the dataframes so everything is in one place
+
+totals_chess_transfers_table <- merge(chess_transfers_clean, count_of_total_transfers_by_country_table, by = "federation")
+
+# I'm going to rename the headers
+
+names(totals_chess_transfers_table) <- c("Current_Federation", "Transfer_Year", "Number_of_Tranfers_in_Year", "Number_of_Tranfers_Total")
+
+# take the main data frame and filter to include only the countries whose total number of transfers will put that in the top 3
+
+chess_transfers_top_3 <- totals_chess_transfers_table %>%
+  filter(Current_Federation %in% top_three_countries_total$federation)
+
+# try to graph this as a scatterplot
+
+library(ggplot2)
+
+ggplot(data = chess_transfers_top_3, aes(x = Transfer_Year, y = Number_of_Tranfers_in_Year, fill = Current_Federation)) +
+  geom_col(position = "dodge") +
+    labs(title="International Chess Transfers", subtitle = "Top Three Countries") +
+   theme(plot.title = element_text(hjust = 0.5, face = "bold")) +
+  theme(plot.subtitle = element_text(hjust = 0.5)) +
+  labs(caption = "Week 1 Assignment") +
+  xlab("Year") +
+  ylab("Number of Players")
+
+# this graph seems to support the meaning of the article. The United States does seem to be trying to acquire the most chess players in order to improve the quality of the USA team overall. Even the countries that acquire the second and third highest number of transfers don't acquire nearly as many as the United States.
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
